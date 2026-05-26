@@ -20,6 +20,7 @@ jobs:
           pip install flet requests
       - name: Build Web App
         run: |
+          # Build specifically for GitHub Pages using the repo subpath
           flet build web . --base-href "/quiz/"
       - name: Upload artifact
         uses: actions/upload-pages-artifact@v3
