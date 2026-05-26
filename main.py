@@ -3,42 +3,6 @@ import threading
 import time
 from core.engine import GameEngine
 
-timer_running = False
-
-
-def load_q(e):
-    global timer_running
-    timer_running = False  # Stop the previous timer if it exists
-    time.sleep(0.2)  # Small delay to let the old thread exit
-
-    question_data = engine.get_auto_question()
-    current_q.update(question_data)
-    quiz_text.value = current_q["q"]
-    player_a_input.value = ""
-    status.value = ""
-    action_area.content = submit_btn
-
-    # Timer Logic
-    total_seconds = (int(min_input.value) * 60) + int(sec_input.value)
-    timer_running = True  # Signal that a new timer has started
-
-    def countdown():
-        for remaining in range(total_seconds, -1, -1):
-            if not timer_running: break  # Stop if another button was clicked
-            mins, secs = divmod(remaining, 60)
-            time_display.value = f"{mins:02d}:{secs:02d}"
-            page.update()
-            time.sleep(1)
-
-        if timer_running:  # Only trigger if this timer finished naturally
-            status.value = "Time's Up!\nGame Over!"
-            status.color = "red"
-            quiz_text.value = "Click Start to try again."
-            action_area.content = start_btn
-            page.update()
-
-    threading.Thread(target=countdown, daemon=True).start()
-    page.update()
 
 def main(page: ft.Page):
     page.title = "Infinite Quiz Master"
@@ -48,8 +12,9 @@ def main(page: ft.Page):
 
     engine = GameEngine()
     current_q = {"q": "", "a": ""}
+    timer_running = [False]  # Using a list to make it mutable in nested functions
 
-    # UI Elements
+    # --- UI Elements ---
     score_text = ft.Text("0", size=32, weight="bold", color="#38BDF8")
     quiz_text = ft.Text("Press Start to begin.", size=22, text_align=ft.TextAlign.CENTER)
     player_a_input = ft.TextField(label="Answer (True/False)", border_color="#38BDF8")
@@ -60,8 +25,12 @@ def main(page: ft.Page):
     sec_input = ft.TextField(label="Secs", value="10", width=80)
     action_area = ft.Container()
 
-    # --- Game Logic ---
+    # --- Helper Functions ---
     def load_q(e):
+        timer_running[0] = False  # Stop any previous timer
+        time.sleep(0.1)
+        timer_running[0] = True
+
         question_data = engine.get_auto_question()
         current_q.update(question_data)
         quiz_text.value = current_q["q"]
@@ -69,22 +38,29 @@ def main(page: ft.Page):
         status.value = ""
         action_area.content = submit_btn
 
-        # Timer Logic
-        total_seconds = (int(min_input.value) * 60) + int(sec_input.value)
+        # Safely get time values
+        try:
+            m = int(min_input.value) if min_input.value.strip() else 0
+            s = int(sec_input.value) if sec_input.value.strip() else 0
+        except ValueError:
+            m, s = 0, 10
+
+        total_seconds = (m * 60) + s
 
         def countdown():
             for remaining in range(total_seconds, -1, -1):
+                if not timer_running[0]: break
                 mins, secs = divmod(remaining, 60)
                 time_display.value = f"{mins:02d}:{secs:02d}"
                 page.update()
                 time.sleep(1)
 
-            # Game Over State
-            status.value = "Time's Up!\nGame Over!"
-            status.color = "red"
-            quiz_text.value = "Click Start to try again."
-            action_area.content = start_btn  # Bring back Start button
-            page.update()
+            if timer_running[0]:
+                status.value = "Time's Up!\nGame Over!"
+                status.color = "red"
+                quiz_text.value = "Click Start to try again."
+                action_area.content = start_btn
+                page.update()
 
         threading.Thread(target=countdown, daemon=True).start()
         page.update()
@@ -93,17 +69,17 @@ def main(page: ft.Page):
         if not player_a_input.value.strip():
             status.value = "⚠️ Please fill the answer!"
             status.color = "orange"
-        elif player_a_input.value.lower() == current_q["a"].lower():
-            engine.update_score(True)
-            status.value = "Correct! +25 XP"
-            status.color = "#4ADE80"
-            score_text.value = str(engine.data['score'])
-            action_area.content = next_btn  # Allow moving forward
         else:
-            status.value = f"Wrong! Correct: {current_q['a']}"
-            status.color = "#F87171"
-            action_area.content = next_btn  # Allow moving forward
-
+            timer_running[0] = False  # Stop timer when answer is submitted
+            if player_a_input.value.lower() == current_q["a"].lower():
+                engine.update_score(True)
+                status.value = "Correct! +25 XP"
+                status.color = "#4ADE80"
+                score_text.value = str(engine.data['score'])
+            else:
+                status.value = f"Wrong! Correct: {current_q['a']}"
+                status.color = "#F87171"
+            action_area.content = next_btn
         page.update()
 
     # --- Buttons ---
