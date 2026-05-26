@@ -16,12 +16,7 @@ jobs:
         with: {python-version: '3.12'}
       - run: |
           pip install flet requests
-          flet build web . --yes
-      - run: |
-          # Replace 'YOUR-REPO-NAME' with your actual repository name
-          sed -i 's|href="/"|href="/YOUR-REPO-NAME/"|g' build/web/index.html
-          sed -i 's|src="flutter|src="/YOUR-REPO-NAME/flutter|g' build/web/index.html
-          sed -i 's|href="flutter|href="/YOUR-REPO-NAME/flutter|g' build/web/index.html
+          flet build web . --base-href "/quiz/"
       - uses: actions/upload-pages-artifact@v3
         with: {path: 'build/web'}
       - uses: actions/deploy-pages@v4
