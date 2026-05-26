@@ -13,10 +13,17 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
-        with: {python-version: '3.12'}
-      - run: |
+        with:
+          python-version: '3.12'
+      - name: Install dependencies
+        run: |
           pip install flet requests
+      - name: Build Web App
+        run: |
           flet build web . --base-href "/quiz/"
-      - uses: actions/upload-pages-artifact@v3
-        with: {path: 'build/web'}
-      - uses: actions/deploy-pages@v4
+      - name: Upload artifact
+        uses: actions/upload-pages-artifact@v3
+        with:
+          path: 'build/web'
+      - name: Deploy to GitHub Pages
+        uses: actions/deploy-pages@v4
